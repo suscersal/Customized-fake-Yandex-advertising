@@ -7,7 +7,8 @@ from kivy.uix.label import Label
 from kivy.utils import get_color_from_hex
 
 # ТВОЙ URL
-URL = ""
+URL = "https://controlling-browser-default-rtdb.europe-west1.firebasedatabase.app/result.json"
+
 class BrowserAdControl(App):
     def build(self):
         layout = BoxLayout(orientation='vertical', padding=30, spacing=15)

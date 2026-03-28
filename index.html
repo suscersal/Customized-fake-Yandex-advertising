@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Яндекс Поиск</title>
+    <style>
+        body { margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; font-family: sans-serif; background: #fff; }
+        .logo { font-size: 50px; font-weight: bold; color: #f00; margin-bottom: 25px; text-decoration: none; }
+        
+        /* Прямой поиск Яндекса */
+        form { display: flex; gap: 10px; margin-bottom: 40px; }
+        input { width: 450px; padding: 15px; border: 2px solid #eee; border-radius: 25px; font-size: 16px; outline: none; }
+        input:focus { border-color: #fc0; }
+        button { padding: 15px 30px; border-radius: 25px; border: none; background: #fc0; cursor: pointer; font-weight: bold; }
+        
+        /* Рекламный блок */
+        #ad-box { 
+    width: 500px;           /* Квадратная ширина */
+    height: 500px;          /* Квадратная высота */
+    border-radius: 20px; 
+    overflow: hidden; 
+    box-shadow: 0 15px 35px rgba(0,0,0,0.15); 
+    display: none; 
+    margin: 100px auto;     /* Сместили еще ниже (100px от верха) */
+    background-color: #f8f9fa; /* Светлый фон для пустых полей картинки */
+    border: 1px solid #eee;
+}
+
+    #ad-box img { 
+        width: 100%; 
+        height: 100%; 
+        object-fit: contain;    /* Картинка видна ПОЛНОСТЬЮ, без обрезки */
+    transition: opacity 0.4s ease-in-out;
+}
+
+
+        
+        .copyright {
+            position: fixed; bottom: 10px; left: 0; right: 0; text-align: center;
+            font-family: sans-serif; font-size: 12px; color: rgba(128, 128, 128, 0.5); pointer-events: none;
+    </style>
+</head>
+<body>
+
+    <a href="javascript:location.reload();" class="logo">Яндекс</a>
+    
+    <form action="https://ya.ru/search" method="get">
+        <input type="text" name="text" placeholder="Введите запрос..." required autofocus>
+        <button type="submit">Найти</button>
+    </form>
+
+    <div id="ad-box">
+        <img id="ad-img" src="" alt="Реклама">
+    </div>
+    
+    <div class="copyright">©Made by SUSCERSAL 2026</div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com"></script>
+    <script src="https://www.gstatic.com"></script>
+
+    <script>
+    const DB_URL = "";
+    let adList = [];
+    let currentIndex = 0;
+    let secondsCounter = 0;
+    const DISPLAY_TIME = 5; // Показ картинки 5 сек
+    const audioPlayer = new Audio();
+
+    // 1. ПОЛУЧЕНИЕ ДАННЫХ
+    async function syncAd() {
+        try {
+            const response = await fetch(DB_URL + '?nocache=' + Date.now()); // Обход кэша
+            if (!response.ok) return;
+            const data = await response.json();
+            
+            let newList = [];
+            if (Array.isArray(data)) {
+                newList = data.filter(l => l && typeof l === 'string');
+            } else if (typeof data === 'string') {
+                newList = [data];
+            }
+
+            if (JSON.stringify(newList) !== JSON.stringify(adList)) {
+                adList = newList;
+                console.log("Список обновлен, элементов:", adList.length);
+                if (adList.length > 0) document.getElementById('ad-box').style.display = 'block';
+            }
+        } catch (e) { 
+            console.warn("Ошибка связи с базой, попробуем позже..."); 
+        }
+    }
+
+    // 2. ПЕРЕКЛЮЧАТЕЛЬ
+    function shiftIndex() {
+        secondsCounter = 0;
+        audioPlayer.pause();
+        audioPlayer.src = "";
+        currentIndex = (currentIndex + 1) % adList.length;
+        console.log("Переход к индексу:", currentIndex);
+    }
+
+    // 3. ГЛАВНЫЙ ЦИКЛ (раз в секунду)
+    function mainLoop() {
+        if (adList.length === 0) return;
+
+        const url = adList[currentIndex];
+        const img = document.getElementById('ad-img');
+        
+        // Упрощенная проверка типа
+        const isAudio = url.toLowerCase().includes('.mp3') || url.toLowerCase().includes('.wav');
+
+        if (isAudio) {
+            // Если это аудио и оно еще не запущено для этого URL
+            if (audioPlayer.src !== url) {
+                console.log("Запуск аудио...");
+                audioPlayer.src = url;
+                audioPlayer.play().catch(e => {
+                    console.error("Автоплей заблокирован. Кликните по странице!");
+                    // Если за 3 секунды звук не включился — скипаем
+                    setTimeout(() => { if(audioPlayer.paused) shiftIndex(); }, 3000);
+                });
+
+                audioPlayer.onended = shiftIndex;
+                audioPlayer.onerror = () => {
+                    console.warn("Ошибка файла аудио, пропускаем...");
+                    shiftIndex();
+                };
+            }
+        } else {
+            // Если это КАРТИНКА
+            if (img.src !== url) {
+                img.src = url;
+                img.style.opacity = 1;
+            }
+            
+            secondsCounter++;
+            if (secondsCounter >= DISPLAY_TIME) {
+                shiftIndex();
+            }
+        }
+    }
+
+    // Запуск процессов
+    setInterval(syncAd, 10000); // База раз в 10 сек
+    setInterval(mainLoop, 1000); // Логика раз в 1 секунду
+
+    syncAd(); // Первый запуск
+</script>
+
+
+
+</body>
+</html>
